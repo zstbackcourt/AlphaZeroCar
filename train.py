@@ -77,5 +77,5 @@ class TrainPipeline(object):
             print('\n\rquit')
 
 if __name__ == "__main__":
-    training_pipeline = TrainPipeline(trainSpeed=0, train_model=False)
+    training_pipeline = TrainPipeline(trainSpeed=0, train_model=True)
     training_pipeline.run()

@@ -34,10 +34,11 @@ class Game(object):
             dones.append(done)
             next_states.append(next_state)
             rewards.append(reward)
-            #print(len(states),len(next_states),len(actions),len(rewards),len(dones),len(mcts_probs),len(values))
+            # print(len(states),len(next_states),len(actions),len(rewards),len(dones),len(mcts_probs),len(values))
             if done or len(self.moves)>5:
                 print("done!!!")
                 player.reset_player()
                 self.moves = []
                 # states,next_states,actions,rewards,dones,mcts_probs,values
+                print("actions:",actions)
                 return zip(states,next_states,actions,rewards,dones,mcts_probs,values)

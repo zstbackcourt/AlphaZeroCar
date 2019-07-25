@@ -105,12 +105,7 @@ class MCTS(object):
         self._c_puct = c_puct
         self._n_playout = n_playout
         # 用policy_value网络对root进行评估
-        """！！！！！！！！"""
-        '''##self.env.acts <class 'list'>: [0, 1, 2, 3]
-           ##self.self._root._ob [[4.  2.8 0. ]]
-        '''
-        print(self._root._ob.reshape(-1, self.env.ob_dim))
-        action_probs, leaf_value = self._policy_value_fn(self.env.acts, self._root._ob.reshape(-1, self.env.ob_dim)[0])
+        action_probs, leaf_value = self._policy_value_fn(self.env.acts, self._root._ob.reshape(-1, self.env.ob_dim))
 
         if not isinstance(leaf_value, np.float32):
             print(leaf_value.type)
@@ -144,8 +139,7 @@ class MCTS(object):
             # 如果该叶子节点不是done，就保存状态
             c_node._ob = ob
             # 用policy_value对该叶子节点进行评估
-            """！！！！！！！！"""
-            action_probs, leaf_value = self._policy_value_fn(self.env.acts, ob.reshape(-1, self.env.ob_dim)[0])
+            action_probs, leaf_value = self._policy_value_fn(self.env.acts, ob.reshape(-1, self.env.ob_dim))
             if not isinstance(leaf_value,np.float32):
                 print(leaf_value.type)
                 raise ValueError("leaf_value的类型不对")
@@ -191,16 +185,14 @@ class MCTS(object):
                 ob, reward, done, _ = self.env.step(last_move)
                 self._root._ob = ob
                 # 展开
-                """！！！！！！！！"""
-                action_probs, leaf_value = self._policy_value_fn(self.env.acts,self._root._ob.reshape(-1, self.env.ob_dim)[0])
+                action_probs, leaf_value = self._policy_value_fn(self.env.acts,self._root._ob.reshape(-1, self.env.ob_dim))
                 self._root.expand(action_probs)
             self._root._parent = None
         else:
             # 一条轨迹结束，树重新展开
             self._root = TreeNode(None, 0.0)
             self._root._ob = self.env.reset()
-            """！！！！！！！！"""
-            action_probs, leaf_value = self._policy_value_fn(self.env.acts, self._root._ob.reshape(-1, self.env.ob_dim)[0])
+            action_probs, leaf_value = self._policy_value_fn(self.env.acts, self._root._ob.reshape(-1, self.env.ob_dim))
             self._root.expand(action_probs)
 
     def __str__(self):
