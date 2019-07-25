@@ -13,7 +13,7 @@ class Game(object):
     def start_self_play(self, player, temp=1e-3):
         # mcts_probs是mcts获得的动作的分布，values是mcts做出的价值评估
         states,next_states,actions,rewards,dones,mcts_probs,values = [],[],[],[],[],[],[]
-
+        # sum_reward = 0
 
 
 
@@ -34,11 +34,16 @@ class Game(object):
             dones.append(done)
             next_states.append(next_state)
             rewards.append(reward)
+            # sum_reward += reward
             # print(len(states),len(next_states),len(actions),len(rewards),len(dones),len(mcts_probs),len(values))
-            if done or len(self.moves)>5:
-                print("done!!!")
+            if done or len(self.moves)>300:
+                if done:
+                    print("done!")
+                else:
+                    print("moves larger than 300!")
+                # print("done!!!")
                 player.reset_player()
                 self.moves = []
                 # states,next_states,actions,rewards,dones,mcts_probs,values
-                print("actions:",actions)
+                # print("actions:",actions)
                 return zip(states,next_states,actions,rewards,dones,mcts_probs,values)

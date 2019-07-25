@@ -6,10 +6,11 @@
 import utils
 import numpy as np
 import tensorflow as tf
+from logger import MyLogger
 
 
 class dqn(object):
-    def __init__(self,epsilon,epsilon_anneal,end_epsilon,lr,gamma,state_size,action_size,name_scope):
+    def __init__(self,epsilon,epsilon_anneal,end_epsilon,lr,gamma,state_size,action_size,name_scope,save_path):
         """
 
         :param sess:
@@ -21,6 +22,7 @@ class dqn(object):
         :param state_size: observation dim
         :param action_size: action dim
         :param name_scope: 命名域
+        :param save_path: 模型保存的路径
         """
         self.sess = tf.Session()
         self.epsilon = epsilon
@@ -31,8 +33,31 @@ class dqn(object):
         self.state_size = state_size
         self.action_size = action_size
         self.name_scope = name_scope
+        self.save_path = save_path
+        self.mylogger = MyLogger("./logs/")
+        # 定义全局要执行的步数
+        self.global_step = tf.Variable(0, name='global_step', trainable=False)
         self.qnetwork()
+        self.loadModel()
         self.sess.run(tf.global_variables_initializer())
+
+    def loadModel(self):
+        """
+        如果存在pretrained模型就加载
+        :return:
+        """
+        self.saver = tf.train.Saver(max_to_keep=3)
+        checkpoint = tf.train.get_checkpoint_state(self.save_path)
+        if checkpoint and checkpoint.model_checkpoint_path:
+            self.saver.restore(self.sess, checkpoint.model_checkpoint_path)
+            print("Successfully loaded:", checkpoint.model_checkpoint_path)
+        else:
+            print("Could not find saved model!")
+
+    def saveModel(self):
+        self.saver.save(self.sess,self.save_path,global_step=self.global_step)
+        print("save the latest model sucessfully!")
+
     def qnetwork(self):
         """
         创建Q network
@@ -52,14 +77,14 @@ class dqn(object):
             self.pi = utils.fc(fc3,self.action_size,activation_fn=tf.nn.log_softmax) # 动作分布
             # self.vf = tf.reduce_sum(tf.multiply(self.q_values,self.pi),1)
             # 动作用one-hot编码
-            action_mask = tf.one_hot(self.action, self.action_size, 1.0, 0.0) # 将输入的action编码成one-hot
+            self.action_mask = tf.one_hot(self.action, self.action_size, 1.0, 0.0) # 将输入的action编码成one-hot
             # 预测的q
-            self.q_value_pred = tf.reduce_sum(self.q_values * action_mask, 1)
+            self.q_value_pred = tf.reduce_sum(self.q_values * self.action_mask, 1)
             # self.q_value_pred = utils.fc(fc3,n_output=1,activation_fn=tf.nn.tanh)
             # q network的loss
             self.loss = tf.reduce_mean(tf.square(tf.subtract(self.target_q, self.q_value_pred)))
             self.optimizer = tf.train.AdamOptimizer(self.lr)
-            self.train_op = self.optimizer.minimize(self.loss)
+            self.train_op = self.optimizer.minimize(self.loss,global_step=self.global_step)
 
 
     # def get_action_values(self, state):
@@ -97,20 +122,21 @@ class dqn(object):
 
     def learn(self, buffer, num_steps, batch_size):
         if buffer.size() <= batch_size:
-            print("buffer size:",buffer.size())
+            # print("buffer size:",buffer.size())
             return
         else:
+            loss = 0
             for step in range(num_steps):
-                print("第{}次更新".format(step))
-                # states,next_states,actions,rewards,dones,mcts_probs,values
+                # print("第{}次更新".format(step))
+                # states0,next_states1,actions2,rewards3,dones,mcts_probs4,values5
                 minibatch = buffer.get_batch(batch_size=batch_size)
                 state_batch = [data[0] for data in minibatch]
                 next_state_batch = [data[1] for data in minibatch]
                 action_batch = [data[2] for data in minibatch]
-                reward_batch = [data[3] for data in minibatch]
+                # reward_batch = [data[3] for data in minibatch]
                 done_batch = [data[4] for data in minibatch]
-                mcts_prob_batch = [data[5] for data in minibatch]
-                value_batch = [data[6] for data in minibatch]
+                # mcts_prob_batch = [data[5] for data in minibatch]
+                # value_batch = [data[6] for data in minibatch]
                 # state_batch = [data[0] for data in minibatch]
                 # action_batch = [data[1] for data in minibatch]
                 # reward_batch = [data[2] for data in minibatch]
@@ -139,7 +165,18 @@ class dqn(object):
                     self.target_q: target_q,
                     self.action: action_batch
                 })
-
+                # l, _ ,am= self.sess.run([self.loss, self.train_op,self.action_mask], feed_dict={
+                #     self.state_input: state_batch,
+                #     self.target_q: target_q,
+                #     self.action: action_batch
+                # })
+                # print("action",action_batch)
+                # print("one hot",am)
+                global_step = self.sess.run(self.global_step)
+                self.mylogger.write_summary_scalar(global_step,"loss",l)
+                # print(l)
+                loss += l
+            return loss/num_steps
 
     def policy_value(self,state):
         """
@@ -152,7 +189,7 @@ class dqn(object):
         log_act_probs, q = self.sess.run([self.pi, self.q_values], feed_dict={self.state_input: [state]})
         act_probs = np.exp(log_act_probs)
         value = np.sum(np.multiply(act_probs,q),axis=1)
-        # '''测试代码'''
+        '''测试代码'''
         # log_act_probs,q_values,vf = self.sess.run([self.q_values,self.pi,self.vf],feed_dict={self.state_input: [state]})
         # print("测试:",log_act_probs,q_values,vf)
 
@@ -167,3 +204,13 @@ class dqn(object):
         act_probs, value = self.policy_value(state[0])
         # print(act_probs, value)
         return zip(action, act_probs[0]), value[0]
+
+    def get_optimal_action(self,state):
+        """
+        获得最优的action
+        :param state:
+        :return:
+        """
+        log_act_probs = self.sess.run(self.pi, feed_dict={self.state_input: [state]})
+        act_probs = np.exp(log_act_probs)
+        return act_probs.argmax()
