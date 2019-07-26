@@ -17,7 +17,7 @@ class TrainPipeline(object):
         self.env = SnakeEnv(trainSpeed,train_model=train_model)
         self.game = Game(self.env)
         self.buffer_size = 16384
-        self.batch_size = 256
+        self.batch_size = 512
         self.buffer = ReplayBuffer(self.buffer_size)
         self.save_path = "MctsModel/"
         self.epoch_num = 10000000
@@ -80,10 +80,10 @@ class TrainPipeline(object):
                 l = self.policy_updata()
                 if i % 50 == 0 and i >0:
                     self.policy_value_net.saveModel()
-                print("epoch-{},loss:{},reward:{}".format(i,l,r))
+                print("loss:{},reward:{}".format(l,r))
         except KeyboardInterrupt:
             print('\n\rquit')
 
 if __name__ == "__main__":
-    training_pipeline = TrainPipeline(trainSpeed=0, train_model=True)
+    training_pipeline = TrainPipeline(trainSpeed=0, train_model=False)
     training_pipeline.run()

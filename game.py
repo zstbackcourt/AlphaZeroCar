@@ -36,11 +36,7 @@ class Game(object):
             rewards.append(reward)
             # sum_reward += reward
             # print(len(states),len(next_states),len(actions),len(rewards),len(dones),len(mcts_probs),len(values))
-            if done or len(self.moves)>300:
-                if done:
-                    print("done!")
-                else:
-                    print("moves larger than 300!")
+            if done or len(self.moves)>128:
                 # print("done!!!")
                 player.reset_player()
                 self.moves = []

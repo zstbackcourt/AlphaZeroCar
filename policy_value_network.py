@@ -7,7 +7,8 @@ import utils
 import numpy as np
 import tensorflow as tf
 from logger import MyLogger
-
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class dqn(object):
     def __init__(self,epsilon,epsilon_anneal,end_epsilon,lr,gamma,state_size,action_size,name_scope,save_path):
@@ -69,12 +70,17 @@ class dqn(object):
             self.action = tf.placeholder(tf.int32, [None])  # 动作输入
             self.target_q = tf.placeholder(tf.float32, [None])  # target Q
 
-            fc1 = utils.fc(self.state_input, n_output=16, activation_fn=tf.nn.relu)
-            fc2 = utils.fc(fc1, n_output=32, activation_fn=tf.nn.relu)
-            fc3 = utils.fc(fc2, n_output=16, activation_fn=tf.nn.relu)
+            #fc1 = utils.lkrelu(utils.fc(self.state_input, n_output=16, activation_fn=None))
+            #fc2 = utils.lkrelu(utils.fc(fc1, n_output=32, activation_fn=None))
+            #fc3 = utils.lkrelu(utils.fc(fc2, n_output=16, activation_fn=None))
+            fc1 = utils.lkrelu(utils.fc(self.state_input, 'fc1', nh=16, init_scale=np.sqrt(2.0)))
+            fc2 = utils.lkrelu(utils.fc(fc1, 'fc2', nh=32, init_scale=np.sqrt(2.0)))
+            fc3 = utils.lkrelu(utils.fc(fc2, 'fc3', nh=16, init_scale=np.sqrt(2.0)))
             # self.vf = utils.fc(fc3,1,activation_fn=tf.nn.relu)
-            self.q_values = utils.fc(fc3, self.action_size, activation_fn=None) # 每一个动作的q_value
-            self.pi = utils.fc(fc3,self.action_size,activation_fn=tf.nn.log_softmax) # 动作分布
+            self.q_values = utils.lkrelu(utils.fc(fc3, 'q_values', nh=self.action_size, init_scale=np.sqrt(2.0)))
+            # self.q_values = utils.lkrelu(utils.fc(fc3, self.action_size, activation_fn=None)) # 每一个动作的q_value
+            # self.pi = utils.fc(fc3,self.action_size,activation_fn=tf.nn.softmax) # 动作分布
+            self.pi = tf.nn.softmax(utils.fc(self.q_values, 'pi', nh=self.action_size, init_scale=np.sqrt(2.0)))
             # self.vf = tf.reduce_sum(tf.multiply(self.q_values,self.pi),1)
             # 动作用one-hot编码
             self.action_mask = tf.one_hot(self.action, self.action_size, 1.0, 0.0) # 将输入的action编码成one-hot
@@ -122,7 +128,7 @@ class dqn(object):
 
     def learn(self, buffer, num_steps, batch_size):
         if buffer.size() <= batch_size:
-            # print("buffer size:",buffer.size())
+            print("buffer size:",buffer.size())
             return
         else:
             loss = 0
@@ -187,7 +193,8 @@ class dqn(object):
         # log_act_probs,value = self.sess.run([self.pi,self.q_value_pred],feed_dict={self.state_input: [state]})
         # act_probs = np.exp(log_act_probs)
         log_act_probs, q = self.sess.run([self.pi, self.q_values], feed_dict={self.state_input: [state]})
-        act_probs = np.exp(log_act_probs)
+        # act_probs = np.exp(log_act_probs)
+        act_probs = log_act_probs
         value = np.sum(np.multiply(act_probs,q),axis=1)
         '''测试代码'''
         # log_act_probs,q_values,vf = self.sess.run([self.q_values,self.pi,self.vf],feed_dict={self.state_input: [state]})
@@ -202,7 +209,9 @@ class dqn(object):
         action and the score of the board state
         """
         act_probs, value = self.policy_value(state[0])
-        # print(act_probs, value)
+        #print("act_probs, value",act_probs, value)
+        #print("action:",act_probs.argmax())
+        #print("action_:",max(zip(action, act_probs[0]),key=lambda act_prob:act_prob[1])[0])
         return zip(action, act_probs[0]), value[0]
 
     def get_optimal_action(self,state):
@@ -212,5 +221,5 @@ class dqn(object):
         :return:
         """
         log_act_probs = self.sess.run(self.pi, feed_dict={self.state_input: [state]})
-        act_probs = np.exp(log_act_probs)
-        return act_probs.argmax()
+        # act_probs = np.exp(log_act_probs)
+        return log_act_probs.argmax()
