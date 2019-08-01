@@ -30,13 +30,17 @@ class Game(object):
             # ob, r, np.array(d), infos = env.step
             self.moves.append(action)
             self.env.recover(rootOb) # 只恢复状态
+            #print("rootOb:{},recover后:{},preDis:{}".format(rootOb,self.env.snakePosition,self.env.preDis))
             next_state , reward, done, _ = self.env.step(action)
+            #print("执行完:{},preDis:{}".format(next_state,self.env.preDis))
+            #print(len(self.moves))
             dones.append(done)
             next_states.append(next_state)
             rewards.append(reward)
+            #print("当前获得reawrd:",reward)
             # sum_reward += reward
             # print(len(states),len(next_states),len(actions),len(rewards),len(dones),len(mcts_probs),len(values))
-            if done or len(self.moves)>128:
+            if done or len(self.moves)>512:
                 # print("done!!!")
                 player.reset_player()
                 self.moves = []

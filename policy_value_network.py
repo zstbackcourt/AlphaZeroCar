@@ -35,19 +35,24 @@ class dqn(object):
         self.action_size = action_size
         self.name_scope = name_scope
         self.save_path = save_path
+        self.policy_coef = 0.4
+        self.value_coef = 0.6
         self.mylogger = MyLogger("./logs/")
         # 定义全局要执行的步数
         self.global_step = tf.Variable(0, name='global_step', trainable=False)
+        self.saver = tf.train.Saver(max_to_keep=3)
         self.qnetwork()
         self.loadModel()
         self.sess.run(tf.global_variables_initializer())
+
+
+
 
     def loadModel(self):
         """
         如果存在pretrained模型就加载
         :return:
         """
-        self.saver = tf.train.Saver(max_to_keep=3)
         checkpoint = tf.train.get_checkpoint_state(self.save_path)
         if checkpoint and checkpoint.model_checkpoint_path:
             self.saver.restore(self.sess, checkpoint.model_checkpoint_path)
@@ -69,29 +74,34 @@ class dqn(object):
             self.state_input = tf.placeholder(tf.float32, [None, self.state_size])  # 状态输入
             self.action = tf.placeholder(tf.int32, [None])  # 动作输入
             self.target_q = tf.placeholder(tf.float32, [None])  # target Q
+            self.mcts_probs = tf.placeholder(tf.float32, shape=[None, self.action_size])
 
-            #fc1 = utils.lkrelu(utils.fc(self.state_input, n_output=16, activation_fn=None))
-            #fc2 = utils.lkrelu(utils.fc(fc1, n_output=32, activation_fn=None))
-            #fc3 = utils.lkrelu(utils.fc(fc2, n_output=16, activation_fn=None))
-            fc1 = utils.lkrelu(utils.fc(self.state_input, 'fc1', nh=16, init_scale=np.sqrt(2.0)))
-            fc2 = utils.lkrelu(utils.fc(fc1, 'fc2', nh=32, init_scale=np.sqrt(2.0)))
-            fc3 = utils.lkrelu(utils.fc(fc2, 'fc3', nh=16, init_scale=np.sqrt(2.0)))
+            fc1 = utils.fc(self.state_input, n_output=32, activation_fn=tf.nn.relu)
+            fc2 = utils.fc(fc1, n_output=64, activation_fn=tf.nn.relu)
+            fc3 = utils.fc(fc2, n_output=16, activation_fn=tf.nn.relu)
+            # fc1 = utils.lkrelu(utils.fc(self.state_input, 'fc1', nh=16, init_scale=np.sqrt(2.0)))
+            # fc2 = utils.lkrelu(utils.fc(fc1, 'fc2', nh=32, init_scale=np.sqrt(2.0)))
+            # fc3 = utils.lkrelu(utils.fc(fc2, 'fc3', nh=16, init_scale=np.sqrt(2.0)))
             # self.vf = utils.fc(fc3,1,activation_fn=tf.nn.relu)
-            self.q_values = utils.lkrelu(utils.fc(fc3, 'q_values', nh=self.action_size, init_scale=np.sqrt(2.0)))
-            # self.q_values = utils.lkrelu(utils.fc(fc3, self.action_size, activation_fn=None)) # 每一个动作的q_value
+
+            # self.q_values = utils.lkrelu(utils.fc(fc3, 'q_values', nh=self.action_size, init_scale=np.sqrt(2.0)))
+            self.q_values = utils.fc(fc3, self.action_size, activation_fn=utils.lkrelu) # 每一个动作的q_value
+            self.pi = tf.nn.softmax(self.q_values)
             # self.pi = utils.fc(fc3,self.action_size,activation_fn=tf.nn.softmax) # 动作分布
-            self.pi = tf.nn.softmax(utils.fc(self.q_values, 'pi', nh=self.action_size, init_scale=np.sqrt(2.0)))
+            #self.pi = tf.nn.softmax(utils.fc(self.q_values, 'pi', nh=self.action_size, init_scale=np.sqrt(2.0)))
+            # self.pi = tf.nn.softmax(utils.lkrelu(utils.fc(fc3, 'pi', nh=self.action_size, init_scale=np.sqrt(2.0))))
             # self.vf = tf.reduce_sum(tf.multiply(self.q_values,self.pi),1)
             # 动作用one-hot编码
             self.action_mask = tf.one_hot(self.action, self.action_size, 1.0, 0.0) # 将输入的action编码成one-hot
-            # 预测的q
+            # 预测的q，根据当前的action预测动作
             self.q_value_pred = tf.reduce_sum(self.q_values * self.action_mask, 1)
             # self.q_value_pred = utils.fc(fc3,n_output=1,activation_fn=tf.nn.tanh)
             # q network的loss
-            self.loss = tf.reduce_mean(tf.square(tf.subtract(self.target_q, self.q_value_pred)))
+            self.dqn_loss = tf.reduce_mean(tf.square(tf.subtract(self.target_q, self.q_value_pred)))
+            self.policy_loss = tf.negative(tf.reduce_mean(tf.reduce_sum(tf.multiply(self.mcts_probs, self.pi), 1)))
+            self.loss = self.value_coef * self.dqn_loss + self.policy_coef * self.policy_loss
             self.optimizer = tf.train.AdamOptimizer(self.lr)
-            self.train_op = self.optimizer.minimize(self.loss,global_step=self.global_step)
-
+            self.train_op = self.optimizer.minimize(self.loss, global_step=self.global_step)
 
     # def get_action_values(self, state):
     #     actions = self.sess.run(self.q_values, feed_dict={self.state_input: [state]})
@@ -129,10 +139,12 @@ class dqn(object):
     def learn(self, buffer, num_steps, batch_size):
         if buffer.size() <= batch_size:
             print("buffer size:",buffer.size())
-            return
+            loss = None
+            return loss,self.sess.run(self.global_step)
         else:
             loss = 0
-            for step in range(num_steps):
+            # for step in range(num_steps):
+            for step in range(int(buffer.size()//batch_size)):
                 # print("第{}次更新".format(step))
                 # states0,next_states1,actions2,rewards3,dones,mcts_probs4,values5
                 minibatch = buffer.get_batch(batch_size=batch_size)
@@ -141,7 +153,7 @@ class dqn(object):
                 action_batch = [data[2] for data in minibatch]
                 # reward_batch = [data[3] for data in minibatch]
                 done_batch = [data[4] for data in minibatch]
-                # mcts_prob_batch = [data[5] for data in minibatch]
+                mcts_prob_batch = [data[5] for data in minibatch]
                 # value_batch = [data[6] for data in minibatch]
                 # state_batch = [data[0] for data in minibatch]
                 # action_batch = [data[1] for data in minibatch]
@@ -151,6 +163,7 @@ class dqn(object):
                 state_batch = np.array(state_batch).reshape((-1,self.state_size))
                 next_state_batch = np.array(next_state_batch).reshape((-1,self.state_size))
                 action_batch = np.array(action_batch).reshape((batch_size))
+                mcts_prob_batch = np.array(mcts_prob_batch).reshape((-1,self.action_size))
                 # q_values = self.sess.run(self.q_values, feed_dict={self.state_input: next_state_batch})
                 # max_q_values = q_values.max(axis=1)
                 q_values = self.sess.run(self.q_values, feed_dict={self.state_input: next_state_batch})
@@ -169,7 +182,8 @@ class dqn(object):
                 l, _ = self.sess.run([self.loss, self.train_op], feed_dict={
                     self.state_input: state_batch,
                     self.target_q: target_q,
-                    self.action: action_batch
+                    self.action: action_batch,
+                    self.mcts_probs: mcts_prob_batch
                 })
                 # l, _ ,am= self.sess.run([self.loss, self.train_op,self.action_mask], feed_dict={
                 #     self.state_input: state_batch,
@@ -182,7 +196,7 @@ class dqn(object):
                 self.mylogger.write_summary_scalar(global_step,"loss",l)
                 # print(l)
                 loss += l
-            return loss/num_steps
+            return loss/num_steps,global_step
 
     def policy_value(self,state):
         """
@@ -192,9 +206,10 @@ class dqn(object):
         """
         # log_act_probs,value = self.sess.run([self.pi,self.q_value_pred],feed_dict={self.state_input: [state]})
         # act_probs = np.exp(log_act_probs)
-        log_act_probs, q = self.sess.run([self.pi, self.q_values], feed_dict={self.state_input: [state]})
+        act_probs, q = self.sess.run([self.pi, self.q_values], feed_dict={self.state_input: [state]})
+        # print("act_probs:{}, q:{}".format(act_probs,q))
         # act_probs = np.exp(log_act_probs)
-        act_probs = log_act_probs
+        #act_probs = log_act_probs
         value = np.sum(np.multiply(act_probs,q),axis=1)
         '''测试代码'''
         # log_act_probs,q_values,vf = self.sess.run([self.q_values,self.pi,self.vf],feed_dict={self.state_input: [state]})
@@ -214,12 +229,13 @@ class dqn(object):
         #print("action_:",max(zip(action, act_probs[0]),key=lambda act_prob:act_prob[1])[0])
         return zip(action, act_probs[0]), value[0]
 
-    def get_optimal_action(self,state):
+    def get_optimal_action(self,state,action):
         """
         获得最优的action
         :param state:
         :return:
         """
-        log_act_probs = self.sess.run(self.pi, feed_dict={self.state_input: [state]})
+        act_probs = self.sess.run(self.pi, feed_dict={self.state_input: [state]})
         # act_probs = np.exp(log_act_probs)
-        return log_act_probs.argmax()
+        # return act_probs.argmax()
+        return max(zip(action, act_probs[0]),key=lambda act_prob:act_prob[1])[0]

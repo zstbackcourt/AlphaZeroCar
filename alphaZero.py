@@ -70,6 +70,7 @@ class TreeNode(object):
         :return:
         """
         self._u = (c_puct * self._P * np.sqrt(self._parent._n_visits) / (1 + self._n_visits))
+        # print("self._P:{},self._u:{},self._Q:{}".format(self._P,self._u,self._Q))
         return self._Q + self._u
 
     def is_leaf(self):
@@ -106,7 +107,7 @@ class MCTS(object):
         self._n_playout = n_playout
         # 用policy_value网络对root进行评估
         action_probs, leaf_value = self._policy_value_fn(self.env.acts, self._root._ob.reshape(-1, self.env.ob_dim))
-
+        # action_probs, leaf_value = self._policy_value_fn([0,1], self._root._ob.reshape(-1, 4))
         if not isinstance(leaf_value, np.float32):
             print(leaf_value.type)
             raise ValueError("leaf_value的类型不对")
@@ -160,9 +161,11 @@ class MCTS(object):
             self._playout()
 
         act_visits = [(act, node._n_visits) for act, node in self._root._children.items()]
+        #print("act_visits",act_visits)
         acts, visits = zip(*act_visits)
-        q_u_value = [(node._Q, node._u) for act, node in self._root._children.items()]
-        q,u = zip(*q_u_value)
+        #print("visits",visits)
+        # q_u_value = [(node._Q, node._u) for act, node in self._root._children.items()]
+        # q,u = zip(*q_u_value)
         act_probs = softmax(np.log(np.array(visits) + 1e-10) / temp)
 
         return acts, act_probs, self._root._Q, self._root._ob
@@ -176,6 +179,13 @@ class MCTS(object):
         if last_move in self._root._children:
             # 从root节点的孩子中选择对应last_move这个动作的孩子作为新的root
             self._root = self._root._children[last_move]
+            # print("往前走了一步(no expand)")
+            # print(self._root._parent._ob[0]
+            #       ,self._root._parent._children[0]._ob[0]
+            #       ,self._root._parent._children[1]._ob[0]
+            #       ,self._root._parent._children[2]._ob[0]
+            #       ,self._root._parent._children[3]._ob[0])
+            #print(last_move, self._root._ob[0])
 
             if (self._root._ob is None and self._root.is_leaf()):
                 # 如果新的root的ob是None且该root是一个没有展开过的叶子节点
@@ -184,6 +194,10 @@ class MCTS(object):
                 self.env.recover(self._root._parent._ob)
                 ob, reward, done, _ = self.env.step(last_move)
                 self._root._ob = ob
+                # print("往前走了一步(expand)")
+                # print(self._root._parent._ob[0])
+                # print(last_move,self._root._ob[0])
+
                 # 展开
                 action_probs, leaf_value = self._policy_value_fn(self.env.acts,self._root._ob.reshape(-1, self.env.ob_dim))
                 self._root.expand(action_probs)

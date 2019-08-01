@@ -59,27 +59,27 @@ def ortho_init(scale=1.0):
     return _ortho_init
 
 
-def fc(x, scope, nh, *, init_scale=1.0, init_bias=0.0):
-    with tf.variable_scope(scope):
-        nin = x.get_shape()[1].value
-        w = tf.get_variable("w", [nin, nh], initializer=ortho_init(init_scale))
-        b = tf.get_variable("b", [nh], initializer=tf.constant_initializer(init_bias))
-        return tf.matmul(x, w)+b
+# def fc(x, scope, nh, *, init_scale=1.0, init_bias=0.0):
+#     with tf.variable_scope(scope):
+#         nin = x.get_shape()[1].value
+#         w = tf.get_variable("w", [nin, nh], initializer=ortho_init(init_scale))
+#         b = tf.get_variable("b", [nh], initializer=tf.constant_initializer(init_bias))
+#         return tf.matmul(x, w)+b
 
-# def fc(x, n_output, activation_fn=None):
-#     """
-#     全连接
-#     :param x:
-#     :param n_output:
-#     :param activation_fn:
-#     :return:
-#     """
-#     W=tf.Variable(tf.random_normal([int(x.get_shape()[1]), n_output]))
-#     b=tf.Variable(tf.random_normal([n_output]))
-#     fc1 = tf.add(tf.matmul(x, W), b)
-#     if not activation_fn == None:
-#         fc1 = activation_fn(fc1)
-#     return fc1
+def fc(x, n_output, activation_fn=None):
+    """
+    全连接
+    :param x:
+    :param n_output:
+    :param activation_fn:
+    :return:
+    """
+    W=tf.Variable(tf.random_normal([int(x.get_shape()[1]), n_output]))
+    b=tf.Variable(tf.constant(0.0, shape = [n_output]))
+    fc1 = tf.add(tf.matmul(x, W), b)
+    if not activation_fn == None:
+        fc1 = activation_fn(fc1)
+    return fc1
 
 
 def flatten(x):
