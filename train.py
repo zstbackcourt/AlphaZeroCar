@@ -17,7 +17,7 @@ class TrainPipeline(object):
         self.env = SnakeEnv(trainSpeed,train_model=train_model)
         self.game = Game(self.env)
         self.buffer_size = 16384
-        self.batch_size = 512
+        self.batch_size = 1024
         self.buffer = ReplayBuffer(self.buffer_size)
         self.save_path = "MctsModel/"
         self.epoch_num = 10000000
@@ -30,7 +30,7 @@ class TrainPipeline(object):
         self.epsilon = 0.9
         self.epsilon_anneal = 0.01
         self.end_epsilon = 0.1
-        self.lr = 0.001
+        self.lr = 2e-3
         self.gamma = 0.99
         self.state_size = 3
         self.action_size = 4
@@ -69,8 +69,8 @@ class TrainPipeline(object):
             #print(self.buffer.size())
 
     def policy_updata(self):
-        loss,global_step = self.policy_value_net.learn(self.buffer,num_steps=self.update_num_steps,batch_size=self.batch_size)
-        return loss,global_step
+        loss,dloss,global_step = self.policy_value_net.learn(self.buffer,batch_size=self.batch_size)
+        return loss,dloss,global_step
 
     def run(self):
         try:
@@ -79,10 +79,10 @@ class TrainPipeline(object):
                 r = self.collect_selfplay_data()
                 # print("第{}个epoch,globale_step:{},reward:{}".format(i,r))
                 self.policy_value_net.mylogger.write_summary_scalar(self.policy_value_net.sess.run(self.policy_value_net.global_step),"reward",r)
-                l,step = self.policy_updata()
+                l,dl,step = self.policy_updata()
                 if i % 20 == 0 and i >0:
                     self.policy_value_net.saveModel()
-                print("第{}个epoch,globale_step:{},loss:{},reward:{}".format(i,step,l,r))
+                print("第{}个epoch,globale_step:{},loss:{},dloss:{},reward:{}".format(i,step,l,dl,r))
         except KeyboardInterrupt:
             self.policy_value_net.saveModel()
             print('\n\rquit')

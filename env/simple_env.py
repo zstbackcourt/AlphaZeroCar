@@ -73,7 +73,7 @@ class SnakeEnv:
                           2: "up",
                           3: "down"}
 
-        self.MaxDis = np.sqrt(2 * 200 ** 2)
+        self.MaxDis = np.sqrt(400**2+280**2)
         self.preDis = self.MaxDis
 
         self.num_envs = 1
@@ -100,14 +100,14 @@ class SnakeEnv:
             self.walls.append([i*20,200])
         for i in range(12):
             self.walls.append([140,200+i*20])
-        for i in range(24):
+        for i in range(25):
             self.walls.append([140+i*20,440])
-        self.walls.append([260,280])
-        self.walls.append([280, 260])
-        #self.walls.append([220,180])
-        self.walls.append([180,160])
-        self.walls.append([220, 380])
-        self.walls.append([360, 360])
+        # self.walls.append([260,280])
+        # self.walls.append([280, 260])
+        # #self.walls.append([220,180])
+        # self.walls.append([180,160])
+        # self.walls.append([220, 380])
+        # self.walls.append([360, 360])
         # print(self.walls)
 
     def step(self, action):
@@ -143,6 +143,7 @@ class SnakeEnv:
             self.snakeBody.insert(0, list(self.snakePosition))
             # 如果贪吃蛇和目标方块的位置重合
             if self.snakePosition[0] == self.targetPosition[0] and self.snakePosition[1] == self.targetPosition[1]:
+                print("到达目标点")
                 self.targetflag = 0
                 self.snakeBody.pop()
                 r = r + 10
@@ -159,7 +160,10 @@ class SnakeEnv:
                 self.snakeBody.pop()
                 currentDis = np.sqrt((self.targetPosition[0] - self.snakePosition[0]) ** 2 + (
                         self.targetPosition[1] - self.snakePosition[1]) ** 2)
-                approachR = (((self.preDis - currentDis) / (self.MaxDis + 1e-8))) * 5.0
+                if self.preDis - currentDis <=0:
+                    approachR = (((self.preDis - currentDis) / (self.MaxDis + 1e-8))) * 5.0 *1.2
+                else:
+                    approachR = (((self.preDis - currentDis) / (self.MaxDis + 1e-8))) * 5.0
                 r += approachR
                 self.preDis = currentDis
 
@@ -199,6 +203,8 @@ class SnakeEnv:
         #print("recover 接收的ob{},当前的snakePostion{}".format(ob,self.snakePosition))
         ob = [round(ob[0][0]*100),round(ob[0][1]*100),round(ob[0][2]*100)]
         self.snakePosition = [self.targetPosition[0]-ob[0], self.targetPosition[1]-ob[1]]
+        self.preDis = np.sqrt((self.targetPosition[0] - self.snakePosition[0]) ** 2 + (
+                    self.targetPosition[1] - self.snakePosition[1]) ** 2)
         #print("recover 恢复后的snakePostion{}".format(self.snakePosition))
         self.direction_ = ob[2]
 
@@ -228,8 +234,9 @@ class SnakeEnv:
         self.snakePosition = [100, 100]
         self.snakeBody = [[100, 100]]
 
-        self.MaxDis = np.sqrt((self.targetPosition[0] - self.snakePosition[0]) ** 2 + (
-                self.targetPosition[1] - self.snakePosition[1]) ** 2)
+        # self.MaxDis = np.sqrt((self.targetPosition[0] - self.snakePosition[0]) ** 2 + (
+        #         self.targetPosition[1] - self.snakePosition[1]) ** 2)
+        self.MaxDis = np.sqrt(400**2+280**2)
         self.preDis = self.MaxDis
 
         self.direction = 'right'
@@ -258,6 +265,16 @@ class SnakeEnv:
             self.direction = self.changeDirection
         if self.changeDirection == 'down' and not self.direction == 'up':
             self.direction = self.changeDirection
+        # if self.changeDirection == 'left' :
+        #     self.direction = self.changeDirection
+        # if self.changeDirection == 'right' :
+        #     self.direction = self.changeDirection
+        # if self.changeDirection == 'up' :
+        #     self.direction = self.changeDirection
+        # if self.changeDirection == 'down' :
+        #     self.direction = self.changeDirection
+
+
 
         # 根据方向移动蛇头
         if self.direction == 'right':

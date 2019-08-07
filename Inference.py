@@ -50,6 +50,7 @@ class InferencePipeline(object):
             action_probs , _ = self.policy_value_net.policy_value_fn(self.env.acts,ob)
             # print(action_probs)
             action_prob = max(action_probs,key=lambda act_prob:act_prob[1])
+            print(action_prob[0],action_prob)
             ob,_,done,_ = self.env.step(action_prob[0])
             #       'done:{},'
             #       'action:{}').format(ob,done,action[0]))

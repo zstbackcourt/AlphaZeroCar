@@ -167,8 +167,10 @@ class MCTS(object):
         # q_u_value = [(node._Q, node._u) for act, node in self._root._children.items()]
         # q,u = zip(*q_u_value)
         act_probs = softmax(np.log(np.array(visits) + 1e-10) / temp)
-
-        return acts, act_probs, self._root._Q, self._root._ob
+        '''当前root节点对应的ob经过policy获得的action'''
+        policy_action_probs,policy_leaf_value= self._policy_value_fn(self.env.acts, self._root._ob.reshape(-1, self.env.ob_dim))
+        # print("acts{},act_probs{},policy_action_probs{}:".format(acts,act_probs,policy_action_probs))
+        return acts, act_probs, self._root._Q, self._root._ob,policy_action_probs
 
     def update_with_move(self, last_move):
         """
@@ -248,7 +250,7 @@ class MCTSPlayer(object):
         :param Dirichlet_coef:
         :return:动作action,概率分布,当前root节点的v_value,当前root节点的ob
         """
-        acts, probs, v_value, rootOb = self.mcts.get_move_probs(temp=temp)
+        acts, probs, v_value, rootOb ,policy_probs= self.mcts.get_move_probs(temp=temp)
 
 
         if self._is_selfplay:
@@ -263,4 +265,4 @@ class MCTSPlayer(object):
             action = np.random.choice(acts, p=probs)
             self.mcts.update_with_move(-1)
 
-        return action, probs, v_value, rootOb
+        return action, probs, v_value, rootOb,policy_probs
