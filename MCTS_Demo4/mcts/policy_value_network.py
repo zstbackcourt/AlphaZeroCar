@@ -10,6 +10,7 @@ from gym import spaces
 from baselines.common import set_global_seeds
 from mcts.logger import MyLogger
 import ray
+# from logger import MyLogger
 import ray.experimental.tf_utils
 
 def lkrelu(x, slope=0.05):
@@ -28,7 +29,7 @@ class PolicyValueNet(object):
                  l2_coef=1.0):  # pylint: disable=W0613
 
         set_global_seeds(0)
-        self.mylogger = MyLogger("./logs/")
+        self.mylogger = MyLogger("./MCTSlog/logs/")
         if isinstance(ac_space, spaces.Box):
             act_dim = ac_space.shape[0]
         elif isinstance(ac_space, spaces.Discrete):
@@ -43,14 +44,15 @@ class PolicyValueNet(object):
         else:
             raise NotImplementedError
 
-        X = tf.placeholder(tf.float32, [None, ob_dim-2], name='Ob')  # obs
+        X = tf.placeholder(tf.float32, [None, ob_dim-7], name='Ob')  # obs
 
         with tf.variable_scope("policyAndValue", reuse=reuse):
 
-            p1 = lkrelu(fc(X, 'pi_fc1', nh=16, init_scale=np.sqrt(2.0)))
-            p2 = lkrelu(fc(p1, 'pi_fc2', nh=32, init_scale=np.sqrt(2.0)))
-            p3 = lkrelu(fc(p2, 'pi_fc3', nh=16, init_scale=np.sqrt(2.0)))
+            p1 = lkrelu(fc(X, 'pi_fc1', nh=256, init_scale=np.sqrt(2.0)))
+            p2 = lkrelu(fc(p1, 'pi_fc2', nh=128, init_scale=np.sqrt(2.0)))
+            p3 = lkrelu(fc(p2, 'pi_fc3', nh=64, init_scale=np.sqrt(2.0)))
             # 油门
+            # print(act_dim)
             pi = tf.nn.log_softmax(fc(p3, 'pi', nh=act_dim, init_scale=np.sqrt(2.0)))
             # 刹车
             # pi_2 = tf.nn.log_softmax(fc(p3, 'pi_2', nh=act_dim, init_scale=np.sqrt(2.0)))

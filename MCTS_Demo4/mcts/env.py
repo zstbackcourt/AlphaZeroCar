@@ -21,9 +21,9 @@ class UnityEnv(gym.Env):
         self.acts = [i for i in range(121)] # 离散化后的动作-1~1一共11*11=121个组合
         self.action_space = spaces.Box(low=np.zeros([121]) - 1, high=np.zeros([121]) + 1, dtype=np.float32)
         # 状态空间一共是243维，其中0，1两维不送入policy是用来在Unity中恢复状态的
-        self.observation_space = spaces.Box(low=np.zeros([243]) - 1, high=np.zeros([243]) + 1, dtype=np.float32)
+        self.observation_space = spaces.Box(low=np.zeros([248]) - 1, high=np.zeros([248]) + 1, dtype=np.float32)
         self.act_dim = 121
-        self.ob_dim = 243
+        self.ob_dim = 248
 
     def seed(self, seed=None):
         """
@@ -41,16 +41,21 @@ class UnityEnv(gym.Env):
         reward = np.array(brainInfo.rewards)
         done = np.array(brainInfo.local_done)
         ob = np.array(brainInfo.vector_observations)
-        return ob[-1, 0:243], reward, done[0], infos
+        return ob[-1, 0:248], reward, done[0], infos
 
     def reset(self):
         info = self.env.reset(train_mode=self.train_model)
         brainInfo = info[self.brain_name]
         ob = np.array(brainInfo.vector_observations)
-        return ob[-1, 0:243]
+        return ob[-1, 0:248]
 
     def recover(self,a):
+        # print(a)
         self.step(a)
+        # info = self.env.reset(train_mode=self.train_model)
+        # brainInfo = info[self.brain_name]
+        # ob = np.array(brainInfo.vector_observations)
+        # return ob[-1, 0:247]
 
 
     def render(self):

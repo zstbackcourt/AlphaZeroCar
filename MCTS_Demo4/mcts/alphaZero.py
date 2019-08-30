@@ -4,6 +4,7 @@
 @author: Weijie Shen
 """
 from mcts.utils import softmax,get_true_action,get_recoverOb
+# from utils import softmax,get_true_action,get_recoverOb
 import numpy as np
 import copy
 import sys
@@ -100,12 +101,12 @@ class MCTS(object):
         self.env = env
         # 初始化根节点
         self._root = TreeNode(None, 0.0)
-        self._root._ob = self.env.reset() # 这里是直接获得的ob，送入网络的时候要去掉前两维
+        self._root._ob = self.env.reset() # 这里是直接获得的ob，送入网络的时候要去掉前三维
         self._policy_value_fn = policy_value_fn
         self._c_puct = c_puct
         self._n_playout = n_playout
         # 用policy_value网络对root进行评估
-        action_probs, leaf_value = self._policy_value_fn(self.env.acts, self._root._ob[2:].reshape(-1, self.env.ob_dim-2))
+        action_probs, leaf_value = self._policy_value_fn(self.env.acts, self._root._ob[7:].reshape(-1, self.env.ob_dim-7))
         if not isinstance(leaf_value, np.float32):
             print(leaf_value.type)
             raise ValueError("leaf_value的类型不对")
@@ -133,13 +134,13 @@ class MCTS(object):
         # 走到了叶子节点，在环境中恢复该叶子节点的父节点保存的状态
         self.env.recover(get_recoverOb(c_node._parent._ob))
         # 在环境中执行该叶子节点对应的action，获得该叶子节点应该保存的状态
-        # print(action)
+        # print(get_true_action(action))
         ob, reward, done, _ = self.env.step(get_true_action(action)) # 这里的ob也要去掉前两维
         if done == False:
             # 如果该叶子节点不是done，就保存状态
             c_node._ob = ob
             # 用policy_value对该叶子节点进行评估
-            action_probs, leaf_value = self._policy_value_fn(self.env.acts, ob[2:].reshape(-1, self.env.ob_dim-2))
+            action_probs, leaf_value = self._policy_value_fn(self.env.acts, ob[7:].reshape(-1, self.env.ob_dim-7))
             if not isinstance(leaf_value,np.float32):
                 # print(leaf_value.type)
                 raise ValueError("leaf_value的类型不对")
@@ -148,6 +149,7 @@ class MCTS(object):
             # 更新整个树的节点信息
             c_node.update_recursive(leaf_value + reward)
         else:
+            # print("done!",c_node._parent._ob[0],ob[0])
             c_node.update_recursive(reward)
 
     def get_move_probs(self, temp=1e-3):
@@ -193,14 +195,14 @@ class MCTS(object):
                 # print(last_move,self._root._ob[0])
 
                 # 展开
-                action_probs, leaf_value = self._policy_value_fn(self.env.acts,self._root._ob[2:].reshape(-1, self.env.ob_dim-2))
+                action_probs, leaf_value = self._policy_value_fn(self.env.acts,self._root._ob[7:].reshape(-1, self.env.ob_dim-7))
                 self._root.expand(action_probs)
             self._root._parent = None
         else:
             # 一条轨迹结束，树重新展开
             self._root = TreeNode(None, 0.0)
             self._root._ob = self.env.reset()
-            action_probs, leaf_value = self._policy_value_fn(self.env.acts, self._root._ob[2:].reshape(-1, self.env.ob_dim-2))
+            action_probs, leaf_value = self._policy_value_fn(self.env.acts, self._root._ob[7:].reshape(-1, self.env.ob_dim-7))
             self._root.expand(action_probs)
 
     def __str__(self):
