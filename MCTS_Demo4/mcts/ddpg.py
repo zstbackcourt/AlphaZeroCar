@@ -173,7 +173,8 @@ class ActorNetwork(object):
         p2 = lkrelu(fc(p1, 'pi_fc2', nh=128, init_scale=np.sqrt(2.0)))
         p3 = lkrelu(fc(p2, 'pi_fc3', nh=64, init_scale=np.sqrt(2.0)))
         # pi = tf.nn.log_softmax(fc(p3, 'pi', nh=self.action_size, init_scale=np.sqrt(2.0)))
-        action_values = tf.tanh(fc(p3, 'action', nh=self.action_size, init_scale=np.sqrt(2.0)))
+        # action_values = tf.tanh(fc(p3, 'action', nh=self.action_size, init_scale=np.sqrt(2.0)))
+        action_values = fc(p3, 'action', nh=self.action_size, init_scale=np.sqrt(2.0))
         # action_values = tf.argmax(tf.exp(pi),axis=1)
     actor_variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=name)
     return input_s, actor_variables, action_values

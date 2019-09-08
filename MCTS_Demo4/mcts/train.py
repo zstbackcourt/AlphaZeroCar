@@ -21,13 +21,14 @@ from mcts.ddpg import ddpg
 # from ddpg import ddpg
 import sys
 from mcts.utils import get_true_action
+# from utils import get_true_action
 import time
 from baselines.common import explained_variance, set_global_seeds
 sys.setrecursionlimit(100000)
 
 class TrainPipeline():
 
-    def __init__(self, trainSpeed=0, train_model=False):
+    def __init__(self):
 
         # 初始化游戏环境
         self.Env = UnityEnv(env_directory=None, worker_id=0, train_model=True, no_graphics=True)
@@ -43,9 +44,9 @@ class TrainPipeline():
         self.c_puct = 5
 
         # buffer params
-        self.n_playout = 3  # num of simulations for each move 在每一步总的模拟数
-        self.buffer_size = 16
-        self.batch_size = 4  # mini-batch size for training
+        self.n_playout = 256  # num of simulations for each move 在每一步总的模拟数
+        self.buffer_size = 65536
+        self.batch_size = 256  # mini-batch size for training
 
         self.data_buffer = deque(maxlen=self.buffer_size)  # 双端队列，队列满了之后，会将最开始加入的删掉
 
@@ -192,12 +193,14 @@ class TrainPipeline():
                     if (i + 1) % self.check_freq == 0:
                         self.policy_value_net.save_model()
                         self.ddpg_net.save_model()
-
+                if len(self.data_buffer)>=65535:
+                    self.data_buffer.clear()
+                    # print("清空队列")
         except KeyboardInterrupt:
             print('\n\rquit')
 
 
-class Inference_Pipeline:
+class Inference_Pipeline():
 
     def __init__(self):
         # 初始化游戏环境
@@ -227,7 +230,8 @@ class Inference_Pipeline:
         while (1):
             action_probs, _ = self.policy_value_net.policy_value_fn(self.Env.acts, ob[7:].reshape(-1,self.ob_dim-7))
             action_prob = max(action_probs, key=lambda act_prob: act_prob[1])
-            # print(action_prob[0])
+            print(ob[7:],action_prob[0],get_true_action(action_prob[0]))
+            # print(get_true_action(action_prob[0]))
             ob, _, done, _ = self.Env.step(get_true_action(action_prob[0]))
 
             # """调试："""
@@ -236,10 +240,34 @@ class Inference_Pipeline:
             #        "action :{}"
             #        ).format(ob, done, action_prob[0]))
 
+class DDPG_Inference():
+    def __init__(self):
+        self.Env = UnityEnv(env_directory=None, worker_id=0, train_model=False, no_graphics=True)
+
+        ob_space = self.Env.observation_space
+        ac_space = self.Env.action_space
+        self.ob_dim = self.Env.ob_dim
+        self.act_dim = self.Env.act_dim
+        nbatch = 1
+        save_path = "DDPG_Car/"
+        self.ddpg_net = ddpg(ob_dim=self.ob_dim, nbatch=nbatch, save_path="./DDPG_Car",
+                             batch_size=1,
+                             gamma=0.99, a_lr=0.0001, c_lr=0.0001, tau=0.001, )
+
+    def run(self):
+        ob = self.Env.reset()
+        # ob[7:].reshape(self.ob_dim-7)
+        while (1):
+            action= self.ddpg_net.actor.get_action(ob[7:].reshape([-1,self.ob_dim-7]),self.ddpg_net.sess)
+            print(action)
+            # action_prob = max(action_probs, key=lambda act_prob: act_prob[1])
+            # print(action_prob[0])
+            # ob, _, done, _ = self.Env.step(get_true_action(action_probs))
+
 
 if __name__ == '__main__':
 
-    train_model = True  # use mcts
+    train_model = False  # use mcts
     #
     # train_model = False  # network inference
 
@@ -249,3 +277,5 @@ if __name__ == '__main__':
     else:
         inference_pipline = Inference_Pipeline()
         inference_pipline.run()
+        # inference_pipline = DDPG_Inference()
+        # inference_pipline.run()

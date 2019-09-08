@@ -38,8 +38,8 @@ class Game(object):
             dones.append(done)
             next_states.append(next_state[7:])
             rewards.append(reward)
-            if done or len(states)>3:
-                print(done,len(actions))
+            if done or len(states)>128:
+                # print(done,len(actions))
                 player.reset_player()
                 return zip(states, mcts_probs, values,actions,next_states,rewards,dones)
 

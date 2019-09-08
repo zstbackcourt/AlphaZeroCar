@@ -9,9 +9,9 @@ import tensorflow as tf
 from gym import spaces
 from baselines.common import set_global_seeds
 from mcts.logger import MyLogger
-import ray
 # from logger import MyLogger
-import ray.experimental.tf_utils
+#import ray
+#import ray.experimental.tf_utils
 
 def lkrelu(x, slope=0.05):
     return tf.maximum(slope * x, x)
@@ -109,7 +109,7 @@ class PolicyValueNet(object):
             print("Successfully loaded:", checkpoint.model_checkpoint_path)
         else:
             print("Could not find saved model")
-        self.variables = ray.experimental.tf_utils.TensorFlowVariables(self.loss, self.session)
+        # self.variables = ray.experimental.tf_utils.TensorFlowVariables(self.loss, self.session)
     def policy_value(self, ob):
         """
         input: a batch of states
@@ -150,11 +150,11 @@ class PolicyValueNet(object):
         self.mylogger.write_summary_scalar(global_step, "entropy", _entropy)
         return _loss, _value_loss, _policy_loss, _l2_penalty, _entropy
 
-    def get_weights(self):
-        return self.variables.get_weights()
+    # def get_weights(self):
+    #     return self.variables.get_weights()
 
-    def set_weights(self,weights):
-        self.variables.set_weights(weights)
+    # def set_weights(self,weights):
+    #     self.variables.set_weights(weights)
 
     def save_model(self):
         print("保存模型")
