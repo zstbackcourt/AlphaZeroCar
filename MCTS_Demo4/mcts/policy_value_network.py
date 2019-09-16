@@ -29,7 +29,7 @@ class PolicyValueNet(object):
                  l2_coef=1.0):  # pylint: disable=W0613
 
         set_global_seeds(0)
-        self.mylogger = MyLogger("./MCTSlog/logs/")
+        self.mylogger = MyLogger("./MCTSlog_2/logs/")
         if isinstance(ac_space, spaces.Box):
             act_dim = ac_space.shape[0]
         elif isinstance(ac_space, spaces.Discrete):
@@ -44,7 +44,7 @@ class PolicyValueNet(object):
         else:
             raise NotImplementedError
 
-        X = tf.placeholder(tf.float32, [None, ob_dim-7], name='Ob')  # obs
+        X = tf.placeholder(tf.float32, [None, ob_dim-4], name='Ob')  # obs
 
         with tf.variable_scope("policyAndValue", reuse=reuse):
 
@@ -102,7 +102,7 @@ class PolicyValueNet(object):
         self.session.run(init)
 
         '''load saved model'''
-        self.saver = tf.train.Saver(max_to_keep=1)
+        self.saver = tf.train.Saver(max_to_keep=5)
         checkpoint = tf.train.get_checkpoint_state(self.save_path)
         if checkpoint and checkpoint.model_checkpoint_path:
             self.saver.restore(self.session, checkpoint.model_checkpoint_path)

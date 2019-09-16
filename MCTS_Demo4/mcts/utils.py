@@ -13,9 +13,27 @@ def get_true_action(action):
     :param action:
     :return:
     """
-    steer = -1.0 + (action // 11) * 0.2
-    accelerator = -1.0 + (action % 11) * 0.2
-    return [steer, accelerator,0,0,0,0,0,0,0,0,0,0,0,0]
+    xz_action = action%6
+    eulerAngles_action = action//6
+    # true_act_dict = {
+    #     0:[-1,1,1],
+    #     1:[-1,1,-1],
+    #     2:[0,1,1],
+    #     3:[0,1,-1],
+    #     4:[1,1,1],
+    #     5:[1,1,-1],
+    #     6:[-1,-1,1],
+    #     7:[-1,-1,-1],
+    #     8:[0,-1,1],
+    #     9:[0,-1,-1],
+    #     10:[1,-1,1],
+    #     11:[1,-1,-1]
+    #
+    # }
+    # return [true_act_dict[action][0],true_act_dict[action][1],true_act_dict[action][2],0,0,0,0,0]
+    # steer = -1.0 + (action // 11) * 0.2
+    # accelerator = -1.0 + (action % 11) * 0.2
+    return [xz_action, eulerAngles_action,0,0,0,0,0]
 
 def get_recoverOb(ob):
     """
@@ -23,7 +41,7 @@ def get_recoverOb(ob):
     :param ob:
     :return:
     """
-    return [0,0,1,ob[0],ob[1],ob[2],ob[3],ob[4],ob[5],ob[6],ob[7],ob[8],ob[9],ob[10]]
+    return [0,0,1,ob[0],ob[1],ob[2],ob[3]]
 
 def softmax(x):
     probs = np.exp(x - np.max(x))

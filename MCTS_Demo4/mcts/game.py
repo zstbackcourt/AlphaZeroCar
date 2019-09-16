@@ -26,8 +26,8 @@ class Game(object):
             true_action = get_true_action(action)
             # print("action from mcts:",true_action)
             # 用mcts采样
-            actions.append([true_action[0],true_action[1]])
-            states.append(rootOb[7:])
+            actions.append([true_action[0],true_action[1],true_action[2]])
+            states.append(rootOb[4:])
             mcts_probs.append(action_probs)
             values.append(v_value)
             # 只恢复状态
@@ -36,9 +36,9 @@ class Game(object):
             # print(get_true_action(action))
             next_state , reward, done, _ = self.env.step(true_action)
             dones.append(done)
-            next_states.append(next_state[7:])
+            next_states.append(next_state[4:])
             rewards.append(reward)
-            if done or len(states)>128:
+            if done or len(states)>256:
                 # print(done,len(actions))
                 player.reset_player()
                 return zip(states, mcts_probs, values,actions,next_states,rewards,dones)
